@@ -52,7 +52,6 @@ def get_positions():
     # print(json.dumps(positions, indent=4))
     # print('total : %f'%(total))
 
-
 def get_all_stock_details(stock_symbol, position):
     global metadata
     stock_metadata = metadata.get(stock_symbol, {})
@@ -68,12 +67,12 @@ def get_all_stock_details(stock_symbol, position):
 
     return [Country, stock_symbol, Address, ZipCode, Nature, "-", initialValue, closingValue, closingValue]
 
-def generate_stock_csv_with_metadata():
+def generate_assets_table():
     # Get current date and format it as YYYY-MM-DD
     today = date.today().strftime("%Y-%m-%d")
     
     # Create filename with current date
-    filename = f'stocks_with_metadata_{today}.csv'
+    filename = f'assets_{today}.csv'
 
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
@@ -105,7 +104,7 @@ def main():
     global client
     load_client()
     get_positions()
-    generate_stock_csv_with_metadata()
+    generate_assets_table()
 
 if __name__ == '__main__':
     print("Welcome to the unofficial Schwab interface!\n")
