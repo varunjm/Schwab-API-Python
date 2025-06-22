@@ -1,6 +1,7 @@
 .idea/
 __pycache__/
 *.env
-tokens.json
+*.json
 *log
 results
+venv
