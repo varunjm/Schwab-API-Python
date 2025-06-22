@@ -5,6 +5,7 @@ from time import sleep
 import os
 import json
 import csv
+import argparse
 
 client=None
 account_hash=None
@@ -34,7 +35,7 @@ def load_client():
     client = schwabdev.Client(app_key, app_secret, callback_url, verbose=False)
     linked_accounts = client.account_linked().json()
     account_hash = linked_accounts[0].get('hashValue')
-    acc_positions = client.account_details(account_hash, fields="positions").json()
+
 
 def get_positions():
     global client
@@ -42,6 +43,7 @@ def get_positions():
     global acc_positions
     global positions
 
+    acc_positions = client.account_details(account_hash, fields="positions").json()
     # total = 0
     for position in acc_positions['securitiesAccount']['positions']:
         symbol = position['instrument']['symbol']
@@ -168,24 +170,70 @@ def get_dividends(start_date, end_date):
     # generate a table of dividends earned by stock
 
 def main():
-    global client
+    parser = argparse.ArgumentParser(
+        description='Unofficial Schwab interface for generating investment reports',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  python myaccount.py --assets          Generate assets table only
+  python myaccount.py --sales           Generate sales report only  
+  python myaccount.py --dividends       Generate dividends report only
+  python myaccount.py --all             Generate all reports
+  python myaccount.py -h                Show this help message
+        '''
+    )
+    
+    parser.add_argument('--assets', action='store_true', 
+                       help='Generate assets table (CSV file)')
+    parser.add_argument('--sales', action='store_true',
+                       help='Generate stock sales report for tax filing')
+    parser.add_argument('--dividends', action='store_true',
+                       help='Generate dividends report')
+    parser.add_argument('--all', action='store_true',
+                       help='Generate all reports (assets, sales, and dividends)')
+    
+    args = parser.parse_args()
+    
+    # If no arguments provided, show help
+    if not any([args.assets, args.sales, args.dividends, args.all]):
+        parser.print_help()
+        return
+    
+    print("Welcome to the unofficial Schwab interface!\n")
+    
+    # Load client - needed for all operations
     load_client()
-
-    # Generate assets table
-    get_positions()
-    generate_assets_table()
-
+    
+    # Set up date range for transactions
     prev_fy_start = datetime(2024, 4, 1)
     prev_fy_end = datetime(2025, 3, 31)
-    get_trades(prev_fy_start, prev_fy_end)
-
-    # Generate sales table
-    get_all_sales(prev_fy_start, prev_fy_end)
-
-    # Generate dividends table
-    get_dividends(prev_fy_start, prev_fy_end)
-
+    
+    # Determine what to run based on arguments
+    run_assets = args.assets or args.all
+    run_sales = args.sales or args.all
+    run_dividends = args.dividends or args.all
+    
+    # Generate assets table if requested
+    if run_assets:
+        print("Generating assets table...")
+        get_positions()
+        generate_assets_table()
+        print()
+    
+    # Get trades data if needed for sales or dividends
+    if run_sales or run_dividends:
+        print("Fetching transaction data...")
+        get_trades(prev_fy_start, prev_fy_end)
+        print()
+    
+    # Generate sales report if requested
+    if run_sales:
+        get_all_sales(prev_fy_start, prev_fy_end)
+        print()
+    
+    # Generate dividends report if requested
+    if run_dividends:
+        get_dividends(prev_fy_start, prev_fy_end)
 
 if __name__ == '__main__':
-    print("Welcome to the unofficial Schwab interface!\n")
     main()  # call the user code above
