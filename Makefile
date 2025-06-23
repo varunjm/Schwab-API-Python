@@ -10,6 +10,9 @@ dividends:
 all:
 	@python3 myaccount.py --all
 
+new:
+	@python3 myaccount.py --new
+
 help:
 	@python3 myaccount.py -h
 

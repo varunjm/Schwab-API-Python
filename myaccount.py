@@ -145,29 +145,38 @@ def get_all_sales(start_date, end_date):
     print("\n" + "=" * 70)
 
 def get_dividends(start_date, end_date):
-    global trades
+    dividends = client.transactions(account_hash, start_date, end_date, "DIVIDEND_OR_INTEREST").json()
+    divs = []
+    for dividend in dividends:
+        print(json.dumps(dividend, indent=2))
+        trade_date = dividend.get('tradeDate', '').split('T')[0]  # Get date part only
+        symbol = dividend.get('description')
+        amount = dividend.get('transferItems')[0].get('amount')
+        divs.append([trade_date, symbol, amount])
 
-    # get all trades which have position_effect == 'OPENING' and are buying fractional shares
-    # this corresponds to dividends earned by the stock. For each instance of purchase record
-    # the dividend amount.
-    dividends = []
-    for trade in trades:
-        if trade.get('transferItems')[0].get('positionEffect') == 'OPENING' and trade.get('transferItems')[0].get('amount') < 1:
-            trade_date = trade.get('tradeDate', '').split('T')[0]  # Get date part only
-            symbol = trade.get('transferItems')[0].get('instrument').get('symbol')
-            # this transaction shows -ve value, take the positive of that as dividend
-            dividends.append([trade_date, symbol, abs(trade.get('netAmount'))])
-    
     print("Dividends earned:")
-    print(f"{'Date':<12} {'Symbol':<6} {'Amount':<10}")
+    print(f"{'Date':<12} {'Symbol':<40} {'Amount':<10}")
     print("-" * 30)
-    for div in dividends:
-        print(f"{div[0]:<12} {div[1]:<6} ${div[2]:<9.2f}")
+    for div in divs:
+        print(f"{div[0]:<12} {div[1]:<40} ${div[2]:<9.2f}")
     print("-" * 30)
-    total = sum(div[2] for div in dividends)  # Amount is now at index 2
-    print(f"{'Total:':<19} ${total:<9.2f}")
 
     # generate a table of dividends earned by stock
+
+def try_new_feature():
+    global client
+    global account_hash
+    
+    # Set up date range for transactions
+    prev_fy_start = datetime(2024, 4, 1)
+    prev_fy_end = datetime(2025, 3, 31)
+    
+    print("=== NEW FEATURE: ALL TRANSACTION TYPES ===\n")
+    print("Fetching all transaction types...")
+    
+    # Get all transactions (remove the "TRADE" filter to get all types)
+    all_transactions = client.transactions(account_hash, prev_fy_start, prev_fy_end, "").json()
+    print(json.dumps(all_transactions, indent=2))
 
 def main():
     parser = argparse.ArgumentParser(
@@ -178,6 +187,7 @@ Examples:
   python myaccount.py --assets          Generate assets table only
   python myaccount.py --sales           Generate sales report only  
   python myaccount.py --dividends       Generate dividends report only
+  python myaccount.py --new             Try new feature (all transaction types)
   python myaccount.py --all             Generate all reports
   python myaccount.py -h                Show this help message
         '''
@@ -189,13 +199,15 @@ Examples:
                        help='Generate stock sales report for tax filing')
     parser.add_argument('--dividends', action='store_true',
                        help='Generate dividends report')
+    parser.add_argument('--new', action='store_true',
+                       help='Try new feature - analyze all transaction types')
     parser.add_argument('--all', action='store_true',
                        help='Generate all reports (assets, sales, and dividends)')
     
     args = parser.parse_args()
     
     # If no arguments provided, show help
-    if not any([args.assets, args.sales, args.dividends, args.all]):
+    if not any([args.assets, args.sales, args.dividends, args.new, args.all]):
         parser.print_help()
         return
     
@@ -212,6 +224,7 @@ Examples:
     run_assets = args.assets or args.all
     run_sales = args.sales or args.all
     run_dividends = args.dividends or args.all
+    run_new = args.new
     
     # Generate assets table if requested
     if run_assets:
@@ -234,6 +247,11 @@ Examples:
     # Generate dividends report if requested
     if run_dividends:
         get_dividends(prev_fy_start, prev_fy_end)
+    
+    # Try new feature if requested
+    if run_new:
+        try_new_feature()
 
 if __name__ == '__main__':
     main()  # call the user code above
+
