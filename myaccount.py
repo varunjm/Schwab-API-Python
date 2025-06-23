@@ -148,7 +148,6 @@ def get_dividends(start_date, end_date):
     dividends = client.transactions(account_hash, start_date, end_date, "DIVIDEND_OR_INTEREST").json()
     divs = []
     for dividend in dividends:
-        print(json.dumps(dividend, indent=2))
         trade_date = dividend.get('tradeDate', '').split('T')[0]  # Get date part only
         symbol = dividend.get('description')
         amount = dividend.get('transferItems')[0].get('amount')
@@ -156,12 +155,29 @@ def get_dividends(start_date, end_date):
 
     print("Dividends earned:")
     print(f"{'Date':<12} {'Symbol':<40} {'Amount':<10}")
-    print("-" * 30)
+    print("-" * 62)
     for div in divs:
         print(f"{div[0]:<12} {div[1]:<40} ${div[2]:<9.2f}")
-    print("-" * 30)
+    print("-" * 62)
 
     # generate a table of dividends earned by stock
+
+def get_tds(start_date, end_date):
+    journals = client.transactions(account_hash, start_date, end_date, "JOURNAL").json()
+    taxes = []
+    for journal in journals:
+        if (journal.get('transferItems')[0].get('amount') < 0):
+            trade_date = journal.get('tradeDate', '').split('T')[0]  # Get date part only
+            symbol = journal.get('description')
+            amount = journal.get('transferItems')[0].get('amount')
+            taxes.append([trade_date, symbol, amount])
+
+    print("Taxes deducted:")
+    print(f"{'Date':<12} {'Symbol':<40} {'Amount':<10}")
+    print("-" * 62)
+    for t in taxes:
+        print(f"{t[0]:<12} {t[1]:<40} ${t[2]:<9.2f}")
+    print("-" * 62)
 
 def try_new_feature():
     global client
@@ -187,6 +203,7 @@ Examples:
   python myaccount.py --assets          Generate assets table only
   python myaccount.py --sales           Generate sales report only  
   python myaccount.py --dividends       Generate dividends report only
+  python myaccount.py --tds             Generate taxes deducted report only
   python myaccount.py --new             Try new feature (all transaction types)
   python myaccount.py --all             Generate all reports
   python myaccount.py -h                Show this help message
@@ -199,6 +216,8 @@ Examples:
                        help='Generate stock sales report for tax filing')
     parser.add_argument('--dividends', action='store_true',
                        help='Generate dividends report')
+    parser.add_argument('--tds', action='store_true',
+                       help='Generate taxes deducted report')
     parser.add_argument('--new', action='store_true',
                        help='Try new feature - analyze all transaction types')
     parser.add_argument('--all', action='store_true',
@@ -207,7 +226,7 @@ Examples:
     args = parser.parse_args()
     
     # If no arguments provided, show help
-    if not any([args.assets, args.sales, args.dividends, args.new, args.all]):
+    if not any([args.assets, args.sales, args.dividends, args.tds, args.new, args.all]):
         parser.print_help()
         return
     
@@ -218,12 +237,13 @@ Examples:
     
     # Set up date range for transactions
     prev_fy_start = datetime(2024, 4, 1)
-    prev_fy_end = datetime(2025, 3, 31)
+    prev_fy_end = datetime(2025, 4, 1) # It seems like end date is exclusive
     
     # Determine what to run based on arguments
     run_assets = args.assets or args.all
     run_sales = args.sales or args.all
     run_dividends = args.dividends or args.all
+    run_tds = args.tds or args.all
     run_new = args.new
     
     # Generate assets table if requested
@@ -248,9 +268,13 @@ Examples:
     if run_dividends:
         get_dividends(prev_fy_start, prev_fy_end)
     
+    # Generate taxes deducted report if requested
+    if run_tds:
+        get_tds(prev_fy_start, prev_fy_end)
+    
     # Try new feature if requested
     if run_new:
-        try_new_feature()
+        get_tds(prev_fy_start, prev_fy_end)
 
 if __name__ == '__main__':
     main()  # call the user code above

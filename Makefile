@@ -7,6 +7,9 @@ sales:
 dividends:
 	@python3 myaccount.py --dividends
 
+tds:
+	@python3 myaccount.py --tds
+
 all:
 	@python3 myaccount.py --all
 
